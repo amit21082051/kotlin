@@ -600,21 +600,41 @@ class Fir2IrVisitor(
         return qualifiedAccessExpression.toIrExpression(qualifiedAccessExpression.typeRef)
     }
 
+    private fun generateErrorCallExpression(startOffset: Int, endOffset: Int, calleeReference: FirReference): IrErrorCallExpression {
+        return IrErrorCallExpressionImpl(
+            startOffset, endOffset, IrErrorTypeImpl(null, emptyList(), Variance.INVARIANT),
+            "Unresolved reference: ${calleeReference.render()}"
+        )
+    }
+
     override fun visitVariableAssignment(variableAssignment: FirVariableAssignment, data: Any?): IrElement {
         val calleeReference = variableAssignment.calleeReference
         val symbol = calleeReference.toSymbol(declarationStorage)
         return variableAssignment.convertWithOffsets { startOffset, endOffset ->
-            if (symbol is IrFieldSymbol && symbol.isBound) {
-                IrSetFieldImpl(
-                    startOffset, endOffset, symbol, symbol.owner.type
-                ).apply {
-                    value = variableAssignment.rValue.accept(this@Fir2IrVisitor, data) as IrExpression
+            if (symbol != null && symbol.isBound) {
+                when (symbol) {
+                    is IrFieldSymbol -> IrSetFieldImpl(
+                        startOffset, endOffset, symbol, symbol.owner.type
+                    ).apply {
+                        value = variableAssignment.rValue.accept(this@Fir2IrVisitor, data) as IrExpression
+                    }
+                    is IrPropertySymbol -> {
+                        val irProperty = symbol.owner
+                        val backingField = irProperty.backingField
+                        if (backingField != null) {
+                            IrSetFieldImpl(
+                                startOffset, endOffset, backingField.symbol, backingField.symbol.owner.type
+                            ).apply {
+                                value = variableAssignment.rValue.accept(this@Fir2IrVisitor, data) as IrExpression
+                            }
+                        } else {
+                            generateErrorCallExpression(startOffset, endOffset, calleeReference)
+                        }
+                    }
+                    else -> generateErrorCallExpression(startOffset, endOffset, calleeReference)
                 }
             } else {
-                IrErrorCallExpressionImpl(
-                    startOffset, endOffset, IrErrorTypeImpl(null, emptyList(), Variance.INVARIANT),
-                    "Unresolved reference: ${calleeReference.render()}"
-                )
+                generateErrorCallExpression(startOffset, endOffset, calleeReference)
             }
         }
     }

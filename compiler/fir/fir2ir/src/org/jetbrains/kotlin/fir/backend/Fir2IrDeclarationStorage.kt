@@ -43,6 +43,8 @@ class Fir2IrDeclarationStorage(
 
     private val constructorCache = mutableMapOf<FirConstructor, IrConstructor>()
 
+    private val propertyCache = mutableMapOf<FirProperty, IrProperty>()
+
     private val parameterCache = mutableMapOf<FirValueParameter, IrValueParameter>()
 
     private val variableCache = mutableMapOf<FirVariable, IrVariable>()
@@ -199,24 +201,26 @@ class Fir2IrDeclarationStorage(
     }
 
     fun getIrProperty(property: FirProperty, setParent: Boolean = true): IrProperty {
-        val descriptor = WrappedPropertyDescriptor()
-        val origin = IrDeclarationOrigin.DEFINED
-        return property.convertWithOffsets { startOffset, endOffset ->
-            irSymbolTable.declareProperty(
-                startOffset, endOffset,
-                origin, descriptor, property.delegate != null
-            ) { symbol ->
-                IrPropertyImpl(
-                    startOffset, endOffset, origin, symbol,
-                    property.name, property.visibility, property.modality!!,
-                    property.isVar, property.isConst, property.isLateInit,
-                    property.delegate != null,
-                    // TODO
-                    isExternal = false
-                ).apply {
-                    descriptor.bind(this)
-                    if (setParent) {
-                        setParentByOwnFir(property)
+        return propertyCache.getOrPut(property) {
+            val descriptor = WrappedPropertyDescriptor()
+            val origin = IrDeclarationOrigin.DEFINED
+            property.convertWithOffsets { startOffset, endOffset ->
+                irSymbolTable.declareProperty(
+                    startOffset, endOffset,
+                    origin, descriptor, property.delegate != null
+                ) { symbol ->
+                    IrPropertyImpl(
+                        startOffset, endOffset, origin, symbol,
+                        property.name, property.visibility, property.modality!!,
+                        property.isVar, property.isConst, property.isLateInit,
+                        property.delegate != null,
+                        // TODO
+                        isExternal = false
+                    ).apply {
+                        descriptor.bind(this)
+                        if (setParent) {
+                            setParentByOwnFir(property)
+                        }
                     }
                 }
             }
