@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.fir.backend
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.symbols.ConeClassifierSymbol
+import org.jetbrains.kotlin.fir.symbols.LibraryTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.*
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.ir.IrElement
@@ -78,6 +79,9 @@ fun ConeClassifierSymbol.toIrSymbol(declarationStorage: Fir2IrDeclarationStorage
         is FirTypeParameterSymbol -> {
             toTypeParameterSymbol(declarationStorage)
         }
+        is LibraryTypeParameterSymbol -> {
+            toTypeParameterSymbol(declarationStorage)
+        }
         is FirTypeAliasSymbol -> TODO()
         is FirClassSymbol -> {
             toClassSymbol(declarationStorage)
@@ -109,6 +113,10 @@ fun FirClassSymbol.toClassSymbol(declarationStorage: Fir2IrDeclarationStorage): 
 }
 
 fun FirTypeParameterSymbol.toTypeParameterSymbol(declarationStorage: Fir2IrDeclarationStorage): IrTypeParameterSymbol {
+    return declarationStorage.getIrTypeParameterSymbol(this)
+}
+
+fun LibraryTypeParameterSymbol.toTypeParameterSymbol(declarationStorage: Fir2IrDeclarationStorage): IrTypeParameterSymbol {
     return declarationStorage.getIrTypeParameterSymbol(this)
 }
 
